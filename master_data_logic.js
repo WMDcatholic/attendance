@@ -238,13 +238,13 @@ function handleExcelUpload(file) {
                 const gender = row[genderIndex] ? row[genderIndex].toString().trim() : null;
                 const type = row[typeIndex] ? row[typeIndex].toString().trim() : null;
 
-                let copyTypeExcel = '소복사'; // Default to 소복사
+                let copyTypeExcel = '대복사'; // Default to 대복사 (변경됨: 소복사 -> 대복사)
                 if (copyTypeIndex !== -1 && row[copyTypeIndex]) {
                     const rawCopyType = row[copyTypeIndex].toString().trim();
-                    if (rawCopyType === '대복사') { // Only explicitly set if '대복사'
-                        copyTypeExcel = '대복사';
+                    if (rawCopyType === '소복사') { // 변경됨: 대복사 체크 -> 소복사 체크
+                        copyTypeExcel = '소복사';
                     }
-                    // Any other value (including empty or '소복사' itself) defaults/remains '소복사'
+                    // 빈 값이거나 '대복사'는 기본값 '대복사'로 유지
                 }
 
                 let studentPhone = null;
