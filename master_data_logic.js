@@ -249,14 +249,18 @@ function handleExcelUpload(file) {
 
                 let studentPhone = null;
                 if (studentPhoneIndex !== -1 && row[studentPhoneIndex]) {
-                    studentPhone = row[studentPhoneIndex].toString().trim().replace(/-/g, '');
+                    const rawPhone = row[studentPhoneIndex].toString();
+                    studentPhone = rawPhone.replace(/-/g, '');
                 }
+
 
                 let parentPhone = null;
                 if (parentPhoneIndex !== -1 && row[parentPhoneIndex]) {
-                    parentPhone = row[parentPhoneIndex].toString().trim().replace(/-/g, '');
+                    const rawPhone = row[parentPhoneIndex].toString();
+                    parentPhone = rawPhone.replace(/-/g, '');
                 }
-                console.log(`Processed (Row ${i}) - Student: ${studentPhone}, Parent: ${parentPhone}`);
+                console.log(`Processed (Row ${i}) - Student:`, studentPhone, `Parent:`, parentPhone);
+
 
                 if (!name || !gender || !type) {
                     console.warn(`Skipping row ${i+1} due to missing data:`, row);
