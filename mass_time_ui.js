@@ -380,16 +380,16 @@ async function handleToggleConfirmSchedule() {
     const month = parseInt(monthInput.value);
     if (!year || !month) return;
 
-    const isConfirmed = await db.getScheduleConfirmation(year, month);
+    const isConfirmed = await db.getMassTimeConfirmation(year, month);
 
     if (isConfirmed) {
         if (confirm('확정을 해제하시겠습니까? 다시 수정이 가능해집니다.')) {
-            await db.setScheduleConfirmation(year, month, false);
+            await db.setMassTimeConfirmation(year, month, false);
             loadScheduleDataForInputs();
         }
     } else {
         if (confirm('일정을 확정하시겠습니까? 수정/삭제/추가가 불가능해집니다.')) {
-            await db.setScheduleConfirmation(year, month, true);
+            await db.setMassTimeConfirmation(year, month, true);
             loadScheduleDataForInputs();
         }
     }
@@ -407,15 +407,15 @@ async function loadScheduleDataForInputs() {
 
     calendarDisplay.innerHTML = '';
 
-    const isConfirmed = await db.getScheduleConfirmation(year, month);
+    const isConfirmed = await db.getMassTimeConfirmation(year, month);
 
     if (confirmScheduleBtn) {
         if (isConfirmed) {
-            confirmScheduleBtn.innerHTML = '<i data-lucide="unlock" class="mr-2 h-4 w-4"></i>확정 해제';
+            confirmScheduleBtn.innerHTML = '<i data-lucide="unlock" class="mr-2 h-4 w-4"></i>미사시간 확정해제';
             confirmScheduleBtn.classList.remove('btn-primary');
             confirmScheduleBtn.classList.add('btn-warning');
         } else {
-            confirmScheduleBtn.innerHTML = '<i data-lucide="check-circle" class="mr-2 h-4 w-4"></i>확정';
+            confirmScheduleBtn.innerHTML = '<i data-lucide="check-circle" class="mr-2 h-4 w-4"></i>미사시간 확정';
             confirmScheduleBtn.classList.remove('btn-warning');
             confirmScheduleBtn.classList.add('btn-primary');
         }

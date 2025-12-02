@@ -7,8 +7,8 @@ const TIME_SLOT_CONFIG = {
     'Wed': [{ time: '06:00', type: 'elementary', sequential: true, categoryKey: 'elementary_6am' }],
     'Thu': [{ time: '19:30', type: 'elementary', random: true, categoryKey: 'elementary_random' }],
     'Fri': [{ time: '06:00', type: 'elementary', sequential: true, categoryKey: 'elementary_6am' }],
-    'Sat': [{ time: '10:00', type: 'elementary', random: true, categoryKey: 'elementary_random' }, { time: '16:00', type: 'elementary', random: true, categoryKey: 'elementary_random' }, { time: '18:00', type: 'middle', random: true, categoryKey: 'middle_random' }],
-    'Sun': [{ time: '07:00', type: 'middle', sequential: true, categoryKey: 'middle_7am' }, { time: '09:00', type: 'middle', random: true, categoryKey: 'middle_random' }, { time: '11:00', type: 'middle', random: true, categoryKey: 'middle_random' }, { time: '18:00', type: 'middle', random: true, categoryKey: 'middle_random' }]
+    'Sat': [{ time: '10:00', type: 'elementary', random: true, categoryKey: 'elementary_random' }, { time: '16:00', type: 'elementary', sequential: true, categoryKey: 'elementary_sunday_school' }, { time: '18:00', type: 'middle', random: true, categoryKey: 'middle_random' }],
+    'Sun': [{ time: '07:00', type: 'middle', sequential: true, categoryKey: 'middle_7am' }, { time: '09:00', type: 'middle', sequential: true, categoryKey: 'middle_sunday_school' }, { time: '11:00', type: 'middle', random: true, categoryKey: 'middle_random' }, { time: '18:00', type: 'middle', random: true, categoryKey: 'middle_random' }]
 };
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const CORE_CATEGORIES_LIST = ['elementary_6am', 'middle_7am'];
@@ -64,9 +64,22 @@ function compareEnhancedParticipants(aData, bData, prioritizeZeroCurrentMonthTot
             }
         }
     }
+
+    // [User Request] Prioritize fewer assignments in previous month (Common for both)
+    if (aData.prevTotalCount !== bData.prevTotalCount) return aData.prevTotalCount - bData.prevTotalCount;
+
+    // [User Request] Middle School Logic Refinement:
+    // For Middle School, sort ONLY by prevTotalCount (already checked above), then Random.
+    // Ignore other criteria.
+    const typeA = getEnglishParticipantType(aData.obj.type);
+    if (typeA === 'middle') {
+        if (useRandomTieBreaker) return Math.random() - 0.5;
+        return aData.id - bData.id;
+    }
+
+    // Elementary School Logic (Maintain Existing):
     if (aData.prevCategoryCount !== bData.prevCategoryCount) return aData.prevCategoryCount - bData.prevCategoryCount;
     if (aData.crossPreferenceScore !== bData.crossPreferenceScore) return bData.crossPreferenceScore - aData.crossPreferenceScore;
-    if (aData.prevTotalCount !== bData.prevTotalCount) return aData.prevTotalCount - bData.prevTotalCount;
     if (aData.currentCategoryCount !== bData.currentCategoryCount) return aData.currentCategoryCount - bData.currentCategoryCount;
 
     // [User Request] Grade Priority (Descending)
@@ -79,11 +92,23 @@ function compareEnhancedParticipants(aData, bData, prioritizeZeroCurrentMonthTot
 }
 
 function isPairingAllowed(p1_id, p2_id, participantsMap) {
-    const p1_copyType = participantsMap.get(p1_id)?.copyType;
-    const p2_copyType = participantsMap.get(p2_id)?.copyType;
-    if (p1_copyType === '소복사' && p2_copyType === '소복사') {
+    const p1 = participantsMap.get(p1_id);
+    const p2 = participantsMap.get(p2_id);
+
+    if (!p1 || !p2) return false;
+
+    // [User Request] No 'Small Altar Server' + 'Small Altar Server'
+    if (p1.copyType === '소복사' && p2.copyType === '소복사') {
         return false;
     }
+
+    // [User Request] No Same Grade
+    const grade1 = parseInt(String(p1.grade).replace(/[^0-9]/g, '')) || 0;
+    const grade2 = parseInt(String(p2.grade).replace(/[^0-9]/g, '')) || 0;
+    if (grade1 === grade2) {
+        return false;
+    }
+
     return true;
 }
 
@@ -319,7 +344,19 @@ export async function generateSchedule(year, month) {
 
     if (remainingUnfilledCoreSlots.length > 0) {
         const sortedRegularsForCore = [...regularsForCore].sort((pA, pB) => {
+            // [User Request] Prioritize fewer assignments in previous month (Primary Sort)
+            const prevTotalCountA = calculatedPrevTotalCounts.get(pA.id) || 0;
+            const prevTotalCountB = calculatedPrevTotalCounts.get(pB.id) || 0;
+            if (prevTotalCountA !== prevTotalCountB) return prevTotalCountA - prevTotalCountB;
+
+            // [User Request] Middle School Logic Refinement:
+            // For Middle School, sort ONLY by prevTotalCount (already checked above), then Random.
             const pAEnglishType = getEnglishParticipantType(pA.type);
+            if (pAEnglishType === 'middle') {
+                return Math.random() - 0.5;
+            }
+
+            // Elementary School Logic (Maintain Existing):
             const pBEnglishType = getEnglishParticipantType(pB.type);
             const coreCategoryKeyA = pAEnglishType === 'elementary' ? CORE_CATEGORIES_MAP.elementary : CORE_CATEGORIES_MAP.middle;
             const coreCategoryKeyB = pBEnglishType === 'elementary' ? CORE_CATEGORIES_MAP.elementary : CORE_CATEGORIES_MAP.middle;
@@ -339,12 +376,6 @@ export async function generateSchedule(year, month) {
             // 총 점수가 다르면 점수가 낮은 사람 우선 (배정이 적은 사람)
             if (totalScoreA !== totalScoreB) return totalScoreA - totalScoreB;
 
-            // 점수가 같으면 이전 월 전체 배정 횟수로 비교
-            const prevTotalCountA = calculatedPrevTotalCounts.get(pA.id) || 0;
-            const prevTotalCountB = calculatedPrevTotalCounts.get(pB.id) || 0;
-            if (prevTotalCountA !== prevTotalCountB) return prevTotalCountA - prevTotalCountB;
-
-            // 모두 같으면 랜덤 정렬
             // [User Request] Grade Priority (Descending)
             const gradeA = parseInt(String(pA.grade).replace(/[^0-9]/g, '')) || 0;
             const gradeB = parseInt(String(pB.grade).replace(/[^0-9]/g, '')) || 0;
@@ -364,7 +395,18 @@ export async function generateSchedule(year, month) {
 
         // 랜덤 섞기 전에 현재 월 새벽 배정이 적은 순으로 정렬
         selectedRegularsList.sort((pA, pB) => {
+            // [User Request] Prioritize fewer assignments in previous month (Primary Sort)
+            const prevTotalCountA = calculatedPrevTotalCounts.get(pA.id) || 0;
+            const prevTotalCountB = calculatedPrevTotalCounts.get(pB.id) || 0;
+            if (prevTotalCountA !== prevTotalCountB) return prevTotalCountA - prevTotalCountB;
+
+            // [User Request] Middle School Logic Refinement:
             const pAEnglishType = getEnglishParticipantType(pA.type);
+            if (pAEnglishType === 'middle') {
+                return Math.random() - 0.5;
+            }
+
+            // Elementary School Logic (Maintain Existing):
             const pBEnglishType = getEnglishParticipantType(pB.type);
             const coreCategoryKeyA = pAEnglishType === 'elementary' ? CORE_CATEGORIES_MAP.elementary : CORE_CATEGORIES_MAP.middle;
             const coreCategoryKeyB = pBEnglishType === 'elementary' ? CORE_CATEGORIES_MAP.elementary : CORE_CATEGORIES_MAP.middle;

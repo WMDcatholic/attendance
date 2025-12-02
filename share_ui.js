@@ -33,7 +33,7 @@ const modalCloseBtn = document.getElementById('editModalCloseBtn');
 const modalSaveBtn = document.getElementById('editModalSaveBtn');
 const modalMessageDiv = document.getElementById('editModalMessage');
 
-let editContext = null; 
+let editContext = null;
 let confirmScheduleBtn;
 
 
@@ -177,7 +177,7 @@ export async function initShareView() {
             // If titleBar itself doesn't have a bottom margin from a class, set it.
             // Check existing style to avoid overriding a class-based margin.
             if (!getComputedStyle(titleBar).marginBottom || getComputedStyle(titleBar).marginBottom === '0px') {
-                 titleBar.style.marginBottom = '1rem';
+                titleBar.style.marginBottom = '1rem';
             }
         }
 
@@ -440,7 +440,7 @@ async function loadAndRenderCalendar(year, month) {
             calendarContainer.innerHTML = '';
             messageDiv.textContent = '해당 월의 생성된 일정이 없습니다.';
             messageDiv.className = 'my-2 text-orange-500';
-            currentScheduleData = null; 
+            currentScheduleData = null;
         } else {
             renderShareCalendar(year, month, currentScheduleData.data, allParticipants);
             messageDiv.textContent = `${year}년 ${month}월 일정`;
@@ -457,11 +457,11 @@ async function loadAndRenderCalendar(year, month) {
 
 function renderShareCalendar(year, month, scheduleDays, participantsList) {
     const participantsMap = new Map(participantsList.map(p => [p.id, p]));
-    calendarContainer.innerHTML = ''; 
+    calendarContainer.innerHTML = '';
 
     const firstDayOfMonth = new Date(year, month - 1, 1);
     const lastDayOfMonth = new Date(year, month, 0);
-    const firstDayOfWeek = firstDayOfMonth.getDay(); 
+    const firstDayOfWeek = firstDayOfMonth.getDay();
     const totalDaysInMonth = lastDayOfMonth.getDate();
 
     const table = document.createElement('table');
@@ -538,10 +538,10 @@ function renderShareCalendar(year, month, scheduleDays, participantsList) {
                 dayNumberDiv.style.paddingRight = '0.25rem';
                 dayNumberDiv.style.paddingLeft = '0.25rem';
                 dayNumberDiv.textContent = date;
-                
+
                 const today = new Date();
                 const isCurrentDayToday = (year === today.getFullYear() && month - 1 === today.getMonth() && date === today.getDate());
-                
+
                 cell.appendChild(dayNumberDiv);
 
                 if (isCurrentDayToday) {
@@ -634,7 +634,7 @@ function renderShareCalendar(year, month, scheduleDays, participantsList) {
                                     nameSpan.style.color = '#64748b';
                                     nameSpan.style.fontStyle = 'italic';
                                 }
-                                
+
                                 nameSpan.addEventListener('click', (e) => {
                                     e.stopPropagation();
                                     openEditModal(dateStr, slot.time, slot.type, participantId, slot.assigned, participantsMap);
@@ -689,7 +689,7 @@ async function handleDownload() {
 
     try {
         const calendarElement = document.getElementById('share-calendar-container');
-        
+
         const originalCanvas = await html2canvas(calendarElement, {
             scale: 2,
             useCORS: true,
@@ -741,7 +741,7 @@ async function handleDownload() {
         const titleBarHeight = Math.max(60, originalCanvas.width * 0.05);
         newCanvas.width = originalCanvas.width;
         newCanvas.height = originalCanvas.height + titleBarHeight;
-        
+
         const ctx = newCanvas.getContext('2d');
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
@@ -778,12 +778,25 @@ function openEditModal(date, time, slotType, participantIdToEdit, originalAssign
     modalMessageDiv.textContent = '';
     const participantToEditText = participantsMap.get(participantIdToEdit)?.name || `ID:${participantIdToEdit}`;
     modalTitle.textContent = `${date} ${time} (${participantToEditText}) 일정 수정`;
-    
+
     modalCurrentAssignmentsDiv.innerHTML = '';
     const currentAssignmentsLabel = document.createElement('p');
     currentAssignmentsLabel.className = 'text-sm text-slate-600 mb-1 font-medium';
     currentAssignmentsLabel.textContent = '현재 배정:';
     modalCurrentAssignmentsDiv.appendChild(currentAssignmentsLabel);
+
+    const addParticipantBtn = document.createElement('button');
+    addParticipantBtn.className = 'btn btn-sm btn-outline-primary ml-2 py-0 px-1 text-xs';
+    addParticipantBtn.innerHTML = '<i data-lucide="plus" class="h-3 w-3"></i>';
+    addParticipantBtn.onclick = () => {
+        editContext.isAdding = true;
+        editContext.participantIdToEdit = null;
+        modalTitle.textContent = `${date} ${time} 인원 추가`;
+        modalParticipantSelect.value = "";
+        modalMessageDiv.textContent = '추가할 인원을 선택하세요.';
+        populateParticipantSelect(); // Re-populate to show all available
+    };
+    currentAssignmentsLabel.appendChild(addParticipantBtn);
 
     originalAssignments.forEach(pid => {
         const pData = participantsMap.get(pid);
@@ -791,7 +804,7 @@ function openEditModal(date, time, slotType, participantIdToEdit, originalAssign
         const pType = pData?.type;
         const pDiv = document.createElement('div');
         pDiv.className = 'flex justify-between items-center bg-slate-100 p-2 rounded mb-1';
-        
+
         const nameTypeSpan = document.createElement('span');
         nameTypeSpan.textContent = pName;
 
@@ -807,7 +820,7 @@ function openEditModal(date, time, slotType, participantIdToEdit, originalAssign
             const dayData = currentScheduleData.data.find(d => d.date === date);
             const slotData = dayData?.timeSlots.find(s => s.time === time);
             if (slotData?.fixed) {
-                 nameTypeSpan.classList.add('font-extrabold');
+                nameTypeSpan.classList.add('font-extrabold');
             }
         }
         pDiv.appendChild(nameTypeSpan);
@@ -822,8 +835,8 @@ function openEditModal(date, time, slotType, participantIdToEdit, originalAssign
                         await shareLogic.unassignParticipant(currentYear, currentMonth, date, time, participantIdToEdit);
                         closeEditModal();
                         await loadAndRenderCalendar(currentYear, currentMonth);
-                         messageDiv.textContent = `${pName}님 배정 해제 완료.`;
-                         messageDiv.className = 'my-2 text-green-600';
+                        messageDiv.textContent = `${pName}님 배정 해제 완료.`;
+                        messageDiv.className = 'my-2 text-green-600';
                     } catch (error) {
                         console.error("Failed to unassign participant:", error);
                         modalMessageDiv.textContent = `해제 실패: ${error.message}`;
@@ -844,18 +857,24 @@ function openEditModal(date, time, slotType, participantIdToEdit, originalAssign
 
 async function populateParticipantSelect() {
     if (!editContext) return;
-    const { date, slotType, originalAssignments, participantIdToEdit } = editContext;
+    const { date, slotType, originalAssignments, participantIdToEdit, isAdding } = editContext;
     const genderFilter = modalGenderFilter.value;
-    
+
+    // If adding, we exclude all currently assigned. If editing, we exclude others but keep the one being edited (so it doesn't show up as a duplicate option if we were to change logic, but here we want available replacements)
+    // Actually for replace, we want available people who are NOT in originalAssignments.
+    // For add, we want available people who are NOT in originalAssignments.
+    // So logic is same: exclude originalAssignments.
+    const idsToExclude = isAdding ? originalAssignments : originalAssignments.filter(id => id !== participantIdToEdit);
+
     const availableParticipants = await shareLogic.getAvailableParticipantsForSlot(
         date,
         slotType,
-        originalAssignments.filter(id => id !== participantIdToEdit), 
+        idsToExclude,
         genderFilter,
         allParticipants,
-        currentScheduleData.data 
+        currentScheduleData.data
     );
-    
+
     modalParticipantSelect.innerHTML = '<option value="">변경할 인원 선택...</option>';
     availableParticipants.forEach(p => {
         const option = document.createElement('option');
@@ -863,7 +882,7 @@ async function populateParticipantSelect() {
         let typeColorClass = '';
         if (p.type === '초등') typeColorClass = 'text-sky-700';
         else if (p.type === '중등') typeColorClass = 'text-emerald-700';
-        
+
         option.innerHTML = `${p.name} (<span class="${typeColorClass}">${p.type}</span>, ${p.gender}, ${p.copyType})`;
         modalParticipantSelect.appendChild(option);
     });
@@ -884,15 +903,19 @@ async function handleSaveAssignment() {
         return;
     }
 
-    const { date, time, participantIdToEdit, originalAssignments } = editContext;
-    
+    const { date, time, participantIdToEdit, originalAssignments, isAdding } = editContext;
+
     if (originalAssignments.includes(newParticipantId) && newParticipantId !== participantIdToEdit) {
         modalMessageDiv.textContent = '선택한 인원은 이미 이 시간대에 다른 역할로 배정되어 있습니다.';
         return;
     }
 
     try {
-        await shareLogic.replaceParticipant(currentYear, currentMonth, date, time, participantIdToEdit, newParticipantId);
+        if (isAdding) {
+            await shareLogic.addParticipant(currentYear, currentMonth, date, time, newParticipantId);
+        } else {
+            await shareLogic.replaceParticipant(currentYear, currentMonth, date, time, participantIdToEdit, newParticipantId);
+        }
         closeEditModal();
         await loadAndRenderCalendar(currentYear, currentMonth);
         await updateConfirmButtonState(currentYear, currentMonth); // Added

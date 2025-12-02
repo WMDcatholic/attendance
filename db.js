@@ -132,6 +132,51 @@ export async function removeScheduleConfirmation(year, month) {
     }
 }
 
+// 미사시간 확정 관련 함수 (Share 확정과 분리)
+export async function setMassTimeConfirmation(year, month, status) {
+    try {
+        const id = `${year}_${month}`;
+        const recordToStore = {
+            id: id,
+            year: year,
+            month: month,
+            confirmed: status,
+            timestamp: new Date().getTime()
+        };
+
+        console.log(`[db.js] setMassTimeConfirmation for ${year}-${month}: Attempting to store record:`, JSON.stringify(recordToStore));
+
+        // localStorage에 저장 (새로운 키 사용)
+        localStorage.setItem(`mass_time_confirmed_${id}`, JSON.stringify(recordToStore));
+        console.log(`[db.js] setMassTimeConfirmation for ${year}-${month}: Successfully stored in localStorage.`);
+
+        return { success: true };
+    } catch (error) {
+        console.error(`[db.js] Error in setMassTimeConfirmation for ${year}-${month}:`, error);
+        return { success: false, error: error.message || "Unknown error" };
+    }
+}
+
+export async function getMassTimeConfirmation(year, month) {
+    try {
+        const id = `${year}_${month}`;
+
+        // localStorage에서 확인 (새로운 키 사용)
+        const storedData = localStorage.getItem(`mass_time_confirmed_${id}`);
+        if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            console.log(`[db.js] getMassTimeConfirmation for ${year}-${month}: Found in localStorage:`, parsedData);
+            return parsedData.confirmed === true;
+        }
+
+        console.log(`[db.js] getMassTimeConfirmation for ${year}-${month}: Not found in localStorage.`);
+        return false;
+    } catch (error) {
+        console.error(`[db.js] Error in getMassTimeConfirmation for ${year}-${month}:`, error);
+        return false;
+    }
+}
+
 // 참가자 관련 함수
 export async function addParticipant(participant) {
     try {

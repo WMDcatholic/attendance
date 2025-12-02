@@ -15,18 +15,17 @@ export async function getAvailableParticipantsForSlot(date, slotType, existingAs
             slot.assigned.forEach(id => participantsAssignedOnDate.add(id));
         });
     }
-    
-    existingAssignedIdsInSlot.forEach(id => participantsAssignedOnDate.delete(id));
-
 
     return allParticipants.filter(p => {
         if (p.type !== typeKr) return false;
         if (genderFilter !== 'all' && p.gender !== genderFilter) return false;
-        if (participantsAssignedOnDate.has(p.id)) return false; 
-        if (existingAssignedIdsInSlot.includes(p.id)) return false; 
+        // if (participantsAssignedOnDate.has(p.id)) return false; // Removed per user request
+        if (existingAssignedIdsInSlot.includes(p.id)) return false;
         return true;
-    }).sort((a,b) => a.name.localeCompare(b.name));
+    }).sort((a, b) => a.name.localeCompare(b.name));
 }
+
+
 
 
 export async function unassignParticipant(year, month, date, time, participantIdToUnassign) {
@@ -41,7 +40,7 @@ export async function unassignParticipant(year, month, date, time, participantId
     if (!timeSlot) throw new Error("해당 시간대의 일정을 찾을 수 없습니다.");
 
     timeSlot.assigned = timeSlot.assigned.filter(id => id !== participantIdToUnassign);
-    
+
     await db.saveSchedule(year, month, scheduleData);
 }
 
@@ -100,7 +99,7 @@ export async function replaceParticipant(year, month, date, time, participantIdT
     const scheduleData = schedule.data;
     const daySchedule = scheduleData.find(d => d.date === date);
     if (!daySchedule) throw new Error("해당 날짜의 일정을 찾을 수 없습니다.");
-    
+
     const timeSlot = daySchedule.timeSlots.find(ts => ts.time === time);
     if (!timeSlot) throw new Error("해당 시간대의 일정을 찾을 수 없습니다.");
 
@@ -127,27 +126,73 @@ export async function replaceParticipant(year, month, date, time, participantIdT
                     if (id !== participantIdToReplace) participantsAssignedOnDate.add(id);
                 });
             } else { // For other slots, consider all
-                 s.assigned.forEach(id => participantsAssignedOnDate.add(id));
+                s.assigned.forEach(id => participantsAssignedOnDate.add(id));
             }
         });
     }
 
-    if (participantsAssignedOnDate.has(newParticipantId)) {
-        throw new Error(`${newParticipant.name}님은 이미 해당 날짜의 다른 시간대에 배정되어 있습니다.`);
-    }
+    // if (participantsAssignedOnDate.has(newParticipantId)) {
+    //     throw new Error(`${newParticipant.name}님은 이미 해당 날짜의 다른 시간대에 배정되어 있습니다.`);
+    // }
 
     timeSlot.assigned[index] = newParticipantId;
     const participantDetails = allParticipants.find(p => p.id === newParticipantId);
     if (participantDetails) {
-         const nameIndex = timeSlot.assignedNames.findIndex(name => {
+        const nameIndex = timeSlot.assignedNames.findIndex(name => {
             const oldParticipant = allParticipants.find(p => p.id === participantIdToReplace);
             return oldParticipant && name === oldParticipant.name;
-         });
-         if(nameIndex !== -1) {
+        });
+        if (nameIndex !== -1) {
             timeSlot.assignedNames[nameIndex] = participantDetails.name;
-         }
+        }
     }
 
+
+    await db.saveSchedule(year, month, scheduleData);
+}
+
+export async function addParticipant(year, month, date, time, newParticipantId) {
+    const schedule = await db.getSchedule(year, month);
+    if (!schedule || !schedule.data) throw new Error("기존 일정을 찾을 수 없습니다.");
+
+    const scheduleData = schedule.data;
+    const daySchedule = scheduleData.find(d => d.date === date);
+    if (!daySchedule) throw new Error("해당 날짜의 일정을 찾을 수 없습니다.");
+
+    const timeSlot = daySchedule.timeSlots.find(ts => ts.time === time);
+    if (!timeSlot) throw new Error("해당 시간대의 일정을 찾을 수 없습니다.");
+
+    const allParticipants = await db.getAllParticipants();
+    const newParticipant = allParticipants.find(p => p.id === newParticipantId);
+    if (!newParticipant) throw new Error("새로운 인원 정보를 찾을 수 없습니다.");
+
+    const slotTypeKr = timeSlot.type === 'elementary' ? '초등' : '중등';
+    if (newParticipant.type !== slotTypeKr) {
+        throw new Error(`추가할 인원은 ${slotTypeKr} 유형이어야 합니다.`);
+    }
+
+    const dailyScheduleForCheck = scheduleData.find(d => d.date === date);
+    let participantsAssignedOnDate = new Set();
+    if (dailyScheduleForCheck && dailyScheduleForCheck.timeSlots) {
+        dailyScheduleForCheck.timeSlots.forEach(s => {
+            s.assigned.forEach(id => participantsAssignedOnDate.add(id));
+        });
+    }
+
+    // if (participantsAssignedOnDate.has(newParticipantId)) {
+    //     throw new Error(`${newParticipant.name}님은 이미 해당 날짜에 배정되어 있습니다.`);
+    // }
+
+    if (timeSlot.assigned.includes(newParticipantId)) {
+        throw new Error(`${newParticipant.name}님은 이미 이 시간대에 배정되어 있습니다.`);
+    }
+
+    timeSlot.assigned.push(newParticipantId);
+    timeSlot.assignedNames.push(newParticipant.name);
+
+    // Initialize isFixedStatus if needed, assuming false for new addition
+    if (!timeSlot.isFixedStatus) timeSlot.isFixedStatus = [];
+    timeSlot.isFixedStatus.push(false);
 
     await db.saveSchedule(year, month, scheduleData);
 }
